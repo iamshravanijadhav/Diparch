@@ -14,11 +14,15 @@
 #include "inference.h"
 #include "preprocessing.h"
 #include "model_params.h"
+#include "lora_manager.h"
+#include "lora_packet.h"
 
 static SensorManager sensorManager;
 static DisplayManager displayManager;
 static AlertManager alertManager;
 static TinyMLInference inference;
+static LoRaManager loraManager;
+static uint32_t loraSequenceNumber = 0;
 
 // How long to actively poll the alert pattern + OLED page rotation after
 // each sensor/inference cycle. This always runs (not just when an alert is
@@ -81,6 +85,12 @@ void setup() {
 
     // ---- Alerts ----
     alertManager.begin();
+
+    // ---- LoRa (node -> gateway telemetry; never fatal if missing) ----
+    if (!loraManager.begin()) {
+        Serial.println(F("[WARN] SX1278 LoRa module not detected on SPI bus. "
+                          "Continuing without gateway telemetry."));
+    }
 
     // ---- TinyML model ----
     bool modelOk = inference.begin();
@@ -234,6 +244,25 @@ void loop() {
     alertManager.setLevel(level);
     displayManager.setPrediction(className, confidencePercent, alertManager.isAlertActive());
     displayManager.update();
+
+    // ---- Send this cycle's reading to the gateway over LoRa ----
+    HeatShieldLoRaPacket loraPacket{};
+    loraPacket.magic = HEATSHIELD_LORA_MAGIC;
+    loraPacket.sequenceNumber = loraSequenceNumber++;
+    loraPacket.temperatureC = readings.temperatureC;
+    loraPacket.humidityPct = readings.humidityPct;
+    loraPacket.heartRateBpm = readings.heartRateBpm;
+    loraPacket.spo2Pct = readings.spo2Pct;
+    loraPacket.heatIndexC = rawFeatures[4];
+    loraPacket.fingerPresent = readings.fingerPresent ? 1 : 0;
+    loraPacket.predictedClass = static_cast<uint8_t>(result.predictedClass);
+    loraPacket.confidencePercent = confidencePercent;
+
+    if (loraManager.isReady()) {
+        bool sent = loraManager.send(loraPacket);
+        Serial.print(F("[LoRa] Packet #")); Serial.print(loraPacket.sequenceNumber);
+        Serial.println(sent ? F(" sent to gateway.") : F(" send FAILED (radio busy/error)."));
+    }
 
     // Actively poll the (non-blocking, millis()-based) alert pattern AND the
     // OLED page rotation for a while so: (a) an active WARNING/DANGER/

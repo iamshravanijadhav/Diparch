@@ -1,0 +1,18 @@
+{
+  "feature_names": [
+    "Temperature",
+    "Humidity",
+    "HeartRate",
+    "SpO2",
+    "HeatIndex"
+  ],
+  "class_names": [
+    "SAFE",
+    "WARNING",
+    "DANGER",
+    "CRITICAL"
+  ],
+  "test_accuracy": 0.905039566847147,
+  "macro_f1": 0.9052244897145738,
+  "num_params": 352
+}

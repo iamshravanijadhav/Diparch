@@ -64,13 +64,17 @@ function heatIndexCelsius(tempC, rhPct) {
 
 // Samples one reading for a given class, applying the same global clip
 // bounds and the same >38C humidity-ceiling taper as generate_dataset.py's
-// sample_class().
-function sampleReadingForClass(className, rng) {
+// sample_class(). `heartRateDriftBpm` (default 0) is an optional additive
+// shift -- used by the seed script to simulate gradual cardiovascular
+// drift/dehydration accumulation across a month for the dehydration-trend
+// demo indicator (see heatStrain.js's dehydrationTrend()); real ingested
+// data never has this, it only exists for synthetic demo data.
+function sampleReadingForClass(className, rng, heartRateDriftBpm = 0) {
   const dist = CLASS_DISTRIBUTIONS[className];
 
   let temperature = gaussian(rng, dist.Temperature[0], dist.Temperature[1]);
   let humidity = gaussian(rng, dist.Humidity[0], dist.Humidity[1]);
-  let heartRate = gaussian(rng, dist.HeartRate[0], dist.HeartRate[1]);
+  let heartRate = gaussian(rng, dist.HeartRate[0], dist.HeartRate[1]) + heartRateDriftBpm;
   let spo2 = gaussian(rng, dist.SpO2[0], dist.SpO2[1]);
 
   temperature = clip(temperature, ...GLOBAL_BOUNDS.Temperature);

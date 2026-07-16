@@ -10,6 +10,7 @@ require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const { verifyAuth, requireSupervisor } = require("./src/auth");
 
 const app = express();
 
@@ -22,8 +23,26 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
 
+// Public (not secret) Firebase Web SDK config, read from env so the
+// frontend never needs its own hardcoded copy -- one place to configure
+// credentials, consistent with everything else in .env. This is NOT the
+// service account key: Firebase Web config is meant to be embedded in
+// client code and is safe to expose (it identifies the project only;
+// access is governed by Firebase Auth + this backend's own authorization,
+// not by keeping this config secret).
+app.get("/api/firebase-config", (req, res) => {
+  res.json({
+    apiKey: process.env.FIREBASE_WEB_API_KEY,
+    authDomain: process.env.FIREBASE_WEB_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_WEB_PROJECT_ID,
+    appId: process.env.FIREBASE_WEB_APP_ID,
+  });
+});
+
 app.use("/api/ingest", require("./src/routes/ingest"));
-app.use("/api/workers", require("./src/routes/workers"));
+app.use("/api/auth", require("./src/routes/auth"));
+app.use("/api/workers", require("./src/routes/workers")); // applies verifyAuth internally
+app.use("/api/supervisor", verifyAuth, requireSupervisor, require("./src/routes/supervisor"));
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });

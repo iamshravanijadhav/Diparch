@@ -8,8 +8,14 @@
 const express = require("express");
 const { db } = require("../firebase");
 const { dailyAverages, thirtyDayRisk } = require("../heatStrain");
+const { verifyAuth } = require("../auth");
 
 const router = express.Router();
+
+// Every route below requires a signed-in user; WHICH devices they can see
+// depends on role (applied per-route below, not blanket, since the list
+// and detail routes filter differently).
+router.use(verifyAuth);
 
 function serializeReading(doc) {
   const data = doc.data();
@@ -20,28 +26,37 @@ function serializeReading(doc) {
   };
 }
 
+function serializeWorkerSummary(doc) {
+  const data = doc.data();
+  return {
+    workerId: doc.id,
+    name: data.name || doc.id,
+    site: data.site || "Unassigned",
+    deviceType: data.deviceType || "real",
+    allocatedToPhone: data.allocatedToPhone || null,
+    allocatedToName: data.allocatedToName || null,
+    latest: data.latest
+      ? {
+          ...data.latest,
+          receivedAt: data.latest.receivedAt ? data.latest.receivedAt.toDate().toISOString() : null,
+        }
+      : null,
+    lastSeenAt: data.lastSeenAt ? data.lastSeenAt.toDate().toISOString() : null,
+  };
+}
+
 // GET /api/workers -- lightweight list for the dashboard's worker grid.
+// Supervisors see every device; workers see only the one device (if any)
+// currently allocated to their phone number.
 router.get("/", async (req, res) => {
   try {
-    const snap = await db.collection("workers").get();
-    const workers = snap.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        workerId: doc.id,
-        name: data.name || doc.id,
-        site: data.site || "Unassigned",
-        deviceType: data.deviceType || "real",
-        latest: data.latest
-          ? {
-              ...data.latest,
-              receivedAt: data.latest.receivedAt
-                ? data.latest.receivedAt.toDate().toISOString()
-                : null,
-            }
-          : null,
-        lastSeenAt: data.lastSeenAt ? data.lastSeenAt.toDate().toISOString() : null,
-      };
-    });
+    let snap;
+    if (req.user.role === "supervisor") {
+      snap = await db.collection("workers").get();
+    } else {
+      snap = await db.collection("workers").where("allocatedToUid", "==", req.user.uid).get();
+    }
+    const workers = snap.docs.map(serializeWorkerSummary);
     workers.sort((a, b) => a.workerId.localeCompare(b.workerId));
     res.json({ workers });
   } catch (err) {
@@ -63,6 +78,10 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: `No worker with id "${workerId}".` });
     }
     const workerData = workerSnap.data();
+
+    if (req.user.role !== "supervisor" && workerData.allocatedToUid !== req.user.uid) {
+      return res.status(403).json({ error: "This device isn't allocated to you." });
+    }
 
     const [recentReadingsSnap, dailyStatsSnap] = await Promise.all([
       workerRef.collection("readings").orderBy("receivedAt", "desc").limit(20).get(),
@@ -91,6 +110,8 @@ router.get("/:id", async (req, res) => {
       name: workerData.name || workerId,
       site: workerData.site || "Unassigned",
       deviceType: workerData.deviceType || "real",
+      allocatedToPhone: workerData.allocatedToPhone || null,
+      allocatedToName: workerData.allocatedToName || null,
       latest: workerData.latest
         ? {
             ...workerData.latest,

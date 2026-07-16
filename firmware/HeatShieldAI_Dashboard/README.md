@@ -25,16 +25,18 @@ ESP32-S3 node          classic ESP32 gateway         this backend            bro
 The browser never talks to Firestore directly — it only calls this backend's
 own REST API. Firebase credentials stay server-side.
 
-## 1. Firebase setup (~5 minutes)
+## 1. Firebase setup (~8 minutes)
 
 1. Go to the [Firebase Console](https://console.firebase.google.com/) → **Add project** → name it (e.g. `heatshieldai`) → **Continue** → turn off Google Analytics → **Create project**.
 2. Left sidebar → **Build** → **Firestore Database** → **Create database**.
 3. Pick a nearby region → **Next**.
 4. Choose **Start in production mode** → **Enable**. (This backend uses a service-account key, which always bypasses Firestore security rules — you'll never need to write any. Production mode just keeps the database closed to everyone else.)
 5. **⚙️ gear icon** → **Project settings** → **Service accounts** tab → **Generate new private key** → confirms and downloads a JSON file.
-6. Rename it to `serviceAccountKey.json` and place it directly in this folder (`firmware/HeatShieldAI_Dashboard/`). It's gitignored — never commit it.
+6. Rename it to `serviceAccountKey.json` and place it directly in this folder (`firmware/HeatShieldAI_Dashboard/`). It's gitignored — never commit it. **Guard this file like a password** — anyone who has it has full read/write access to your Firestore data, bypassing all rules.
+7. Left sidebar → **Build** → **Authentication** → **Get started** → **Email/Password** → enable the first toggle (not the passwordless link one) → **Save**. (Workers and supervisors both sign in with phone number + password under the hood via this provider — see "Accounts & roles" below for why.)
+8. Still in Project settings → **General** tab → scroll to **Your apps** → click the **`</>`** (Web) icon → give it any nickname → **Register app**. You'll see a `firebaseConfig` object — you need four values from it for `.env` in the next step: `apiKey`, `authDomain`, `projectId`, `appId`. (Skip Firebase Hosting if it offers it — not needed here.)
 
-That's the entire Firebase side. No schema, no manual indexes.
+That's the entire Firebase side. No schema, no manual indexes, no security rules to write.
 
 ## 2. Backend setup
 
@@ -44,10 +46,12 @@ npm install
 copy .env.example .env      # macOS/Linux: cp .env.example .env
 ```
 
-Open `.env` and confirm:
+Open `.env` and fill in:
 - `PORT` — defaults to 3000.
 - `FIREBASE_SERVICE_ACCOUNT_PATH` — defaults to `./serviceAccountKey.json`, matching step 6 above.
 - `INGEST_API_KEY` — optional, leave blank for now (see "Securing ingestion" below).
+- `SUPERVISOR_SIGNUP_CODE` — **required for supervisor signup to work at all.** Pick any string — this is what gates who can create a supervisor account (full admin power: reallocate/erase any device) from the public signup screen. Treat it like a password; share it only with people who should have admin access.
+- `FIREBASE_WEB_API_KEY`, `FIREBASE_WEB_AUTH_DOMAIN`, `FIREBASE_WEB_PROJECT_ID`, `FIREBASE_WEB_APP_ID` — the four values from step 8 above.
 
 Run it:
 
@@ -90,6 +94,17 @@ from each other — simplest setup is putting both on the same WiFi network.
    successful reading, or a specific warning if WiFi or the backend is
    unreachable.
 
+## Accounts & roles
+
+Opening the dashboard now shows a sign-in screen with two roles:
+
+- **Worker** — self-serve signup with phone number + password. Sees only the one device currently allocated to them (or a "no device allocated yet" message with their phone number, for a supervisor to allocate against).
+- **Supervisor** — signup requires the `SUPERVISOR_SIGNUP_CODE` from `.env`. Sees every device (the same grid/detail view as before this feature existed), plus a **Device management** panel on each device's detail page: allocate it to any registered worker (by phone number, picked from a dropdown of everyone who's signed up as a worker), unallocate it, or erase all its readings/history. A device can only be allocated to one worker at a time, and a worker can only hold one device at a time — allocating a second device to an already-allocated worker automatically frees their first one.
+
+**No SMS OTP yet** — "phone number" is currently just an identifier + password pair (Firebase Auth's email/password provider under the hood, via a synthetic email derived from the phone number — see `src/auth.js`), not actually verified by text message. Anyone who knows a phone number could sign up claiming to be that person. Real OTP verification is a natural next step (Firebase Phone Auth) but is explicitly deferred for now.
+
+The allocation flow in order: **(1)** worker signs up first (establishes their account), **(2)** supervisor picks that worker from the dropdown on the device they want to hand them and clicks Allocate, **(3)** the worker's next page load/poll shows that device. A worker who hasn't been allocated anything yet just sees their own phone number displayed so they can tell it to their supervisor.
+
 ## Securing ingestion (optional, recommended before leaving this running unattended)
 
 By default `/api/ingest` accepts readings from anything on your network that
@@ -102,37 +117,58 @@ header are now rejected with 401.
 ## What's in Firestore
 
 ```
-workers/{workerId}                    -- profile + latest reading (denormalized for the grid)
+workers/{workerId}                    -- profile + latest reading + allocation state (denormalized for the grid)
 workers/{workerId}/readings/{auto}    -- one doc per reading (raw, for the recent-activity table)
 workers/{workerId}/dailyStats/{date}  -- running sums/counts + the heatStrainDay flag, one per UTC day
+users/{uid}                           -- {phoneNumber, role, name} -- one per signed-up account (worker or supervisor)
 ```
 
 `workerId` is whatever the node firmware sends (see `HEATSHIELD_WORKER_ID` in
-`../HeatShieldAI/src/main.cpp` — `"worker1"` by default). A worker doc is
-created automatically the first time it POSTs, no manual setup needed.
+`../HeatShieldAI/src/main.cpp` — `"worker1"` by default). A worker (device)
+doc is created automatically the first time it POSTs, no manual setup needed.
+Allocation state lives on that same doc: `allocatedToPhone`, `allocatedToUid`,
+`allocatedToName`, `allocatedAt` — all `null` until a supervisor allocates it.
 
-## About the 30-day heat-strain indicator
+`users/{uid}` is keyed by the Firebase Auth uid (not the phone number) so a
+phone number can never collide with a Firestore document-id restriction; the
+phone number is looked up via a `where("phoneNumber", "==", ...)` query
+instead (see `src/routes/supervisor.js`'s allocate handler).
+
+## About the long-term heat-exposure risk indicators
 
 Your mentor's point about long-term/chronic health effects (not just "is this
 reading dangerous right now") is handled as a separate, transparent,
 **rule-based** layer on top of the model — see the comment block at the top
-of `src/heatStrain.js` for the full reasoning and the research it's grounded
-in. Short version: the on-device TinyML model only ever sees the current
-reading; this layer counts how many of the last 30 days crossed a
-meaningful heat-strain threshold and buckets that into low/moderate/high, so
-a pattern spanning weeks becomes visible on the dashboard even though the
-model itself has no memory of past days. It's an exposure-tracking heuristic,
-not a diagnosis — the dashboard's copy says so and is worth keeping honest if
-you extend this.
+of `src/heatStrain.js` for the full reasoning and the research each one is
+grounded in. The on-device TinyML model only ever sees the current reading;
+this layer looks at up to 30 days of stored history per device and computes
+four independent indicators, each shown on the worker detail page with its
+own severity tier (low/moderate/high) and plain-language explanation:
+
+1. **Heat Strain (systemic/kidney risk)** — days with sustained DANGER/CRITICAL classification.
+2. **Cardiovascular Strain** — days where heart rate reached ACGIH's approximate excessive-heat-strain range.
+3. **Electrolyte / Heat-Cramp Risk** — days with prolonged heavy exertion in high heat (the NIOSH/OSHA combination behind heat cramps).
+4. **Dehydration Trend** — whether average heart rate is rising week-over-week at comparable exertion (cardiovascular drift), which can flag a worker whose day-to-day readings all look fine while an underlying trend quietly worsens.
+
+None of this diagnoses heat exhaustion, kidney disease, or anything else —
+it flags risk *patterns* worth a closer look, the same spirit as OSHA/NIOSH's
+own water-rest-shade guidance. The dashboard's own "Why this matters" panel
+(on every worker detail page) says so explicitly, alongside the fuller list
+of heat-related conditions this exists to motivate — keep that framing
+intact if you extend this further.
 
 ## Project layout
 
 ```
-server.js                    Express entry point
+server.js                    Express entry point; also serves GET /api/firebase-config (public Web SDK config)
 src/firebase.js              Firebase Admin SDK init
+src/auth.js                  verifyAuth/requireSupervisor middleware + phone<->synthetic-email helpers
 src/heatStrain.js            Shared daily-aggregate + 30-day risk logic (ingest route + seed script both use this)
-src/routes/ingest.js         POST /api/ingest -- gateway's forward target
-src/routes/workers.js        GET /api/workers, /api/workers/:id -- what the dashboard calls
+src/firestoreUtils.js        Shared batched-delete helper (erase route + seed script's --force both use this)
+src/routes/ingest.js         POST /api/ingest -- gateway's forward target (unauthenticated; optional INGEST_API_KEY)
+src/routes/auth.js           POST /api/auth/register, GET /api/auth/me
+src/routes/workers.js        GET /api/workers, /api/workers/:id -- role-filtered (requires sign-in)
+src/routes/supervisor.js     GET registered-workers, POST allocate/unallocate/erase -- supervisor-only
 scripts/seedDummyWorkers.js  Populates worker2-4 with 30 days of example data
 scripts/syntheticPhysiology.js  Mirrors the TinyML training pipeline's class-conditional distributions
 public/                      The dashboard itself (index.html, styles.css, app.js) -- served statically
@@ -147,3 +183,7 @@ public/                      The dashboard itself (index.html, styles.css, app.j
 | `401` responses in the backend's console | `INGEST_API_KEY` is set in `.env` but the gateway's `HEATSHIELD_INGEST_API_KEY` doesn't match (or is still empty). |
 | Map shows a marker but no map tiles | Needs outbound internet access to `tile.openstreetmap.org` from the browser (not from the gateway) — no API key required, just connectivity. |
 | Chart/map area looks empty right after seeding | Hard-refresh the dashboard page; the grid/detail views poll every 5s but won't pick up a brand-new worker until the next poll or a manual reload. |
+| "Firebase Web SDK isn't configured yet" on the login screen | `FIREBASE_WEB_API_KEY`/`AUTH_DOMAIN`/`PROJECT_ID`/`APP_ID` are missing from `.env` — see step 8 of Firebase setup. |
+| Supervisor signup always says "Incorrect supervisor signup code" | `SUPERVISOR_SIGNUP_CODE` isn't set in `.env` (an empty value never matches, on purpose) — set it and restart the backend. |
+| A worker's allocated device disappeared after a supervisor allocated a *different* device to them | Expected — this project enforces one device per worker; allocating a new one automatically frees their previous one (see "Accounts & roles"). |
+| Testing locally against `firebase emulators:start`? | Append `?emulator=1` to the dashboard URL — the frontend will point Firebase Auth at `localhost:9099` instead of real Firebase. Never triggers otherwise. |

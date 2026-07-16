@@ -23,6 +23,7 @@ require("dotenv").config();
 
 const { db, admin } = require("../src/firebase");
 const { dateKeyUTC, emptyDailyStats, foldReadingIntoDailyStats } = require("../src/heatStrain");
+const { deleteSubcollection } = require("../src/firestoreUtils");
 const { CLASS_NAMES, mulberry32, sampleReadingForClass } = require("./syntheticPhysiology");
 
 const FORCE = process.argv.includes("--force");
@@ -84,6 +85,15 @@ const WORKER_PROFILES = [
       if ([5, 14, 21, 27].includes(dayIndex)) return 2;
       return 1;
     },
+    // Demonstrates the dehydration-trend indicator: acute readings stay
+    // "moderate" all month (nothing an instantaneous reading would flag),
+    // but a slow +9 BPM drift by month's end simulates the cardiovascular
+    // drift accumulating dehydration research describes -- precisely the
+    // "looks fine day to day, but slowly deteriorating" pattern a single
+    // reading can't show, which is the whole point of this feature.
+    heartRateDriftBpm(dayIndex) {
+      return (dayIndex / (DAYS_OF_HISTORY - 1)) * 9;
+    },
   },
 ];
 
@@ -91,25 +101,6 @@ function classIndexAtHour(peakClassIndex, hourIndex) {
   const distanceFromPeak = Math.abs(hourIndex - PEAK_HOUR_INDEX);
   const levelDrop = Math.floor(distanceFromPeak / 2);
   return Math.max(0, Math.min(3, peakClassIndex - levelDrop));
-}
-
-async function deleteSubcollection(collectionRef, batchSize = 400) {
-  // Recursive-delete helper: Firestore has no native "delete collection"
-  // call, and there's no bound on how many docs a month of hourly data
-  // could produce on a re-seed, so this pages through in batches rather
-  // than assuming everything fits in one.
-  let deleted = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const snap = await collectionRef.limit(batchSize).get();
-    if (snap.empty) break;
-    const batch = db.batch();
-    snap.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
-    deleted += snap.size;
-    if (snap.size < batchSize) break;
-  }
-  return deleted;
 }
 
 async function seedWorker(profile) {
@@ -154,10 +145,12 @@ async function seedWorker(profile) {
     const peakClassIndex = profile.dayPeakClass(dayIndex);
     const dailyStats = emptyDailyStats(dayKey);
 
+    const driftBpm = profile.heartRateDriftBpm ? profile.heartRateDriftBpm(dayIndex) : 0;
+
     for (let hour = 0; hour < WORK_HOURS; hour++) {
       const classIdx = classIndexAtHour(peakClassIndex, hour);
       const className = CLASS_NAMES[classIdx];
-      const sample = sampleReadingForClass(className, rng);
+      const sample = sampleReadingForClass(className, rng, driftBpm);
 
       const readingTime = new Date(dayDate);
       readingTime.setUTCHours(7 + hour, 0, 0, 0);

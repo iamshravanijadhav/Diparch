@@ -108,6 +108,209 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.app-header__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.app-header__user .role-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--gridline);
+  color: var(--text-secondary);
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover {
+  background: var(--gridline);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--series-1);
+  border-color: var(--series-1);
+  color: #fff;
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-danger {
+  background: transparent;
+  border-color: var(--status-critical);
+  color: var(--status-critical);
+}
+.btn-danger:hover {
+  background: color-mix(in oklab, var(--status-critical) 12%, var(--surface-1));
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/* ---- Login screen ---- */
+
+.login-wrap {
+  max-width: 380px;
+  margin: 60px auto;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 28px;
+}
+
+.login-wrap h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.login-wrap .login-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+
+.role-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--gridline);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  margin-bottom: 18px;
+}
+
+.role-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.role-tab.is-active {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(11, 11, 11, 0.08);
+}
+
+.form-field {
+  margin-bottom: 14px;
+}
+
+.form-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: 2px solid var(--series-1);
+  outline-offset: -1px;
+}
+
+.form-error {
+  background: color-mix(in oklab, var(--status-critical) 12%, var(--surface-1));
+  color: var(--status-critical);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+}
+
+.form-switch-mode {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 14px;
+}
+
+.form-switch-mode button {
+  border: none;
+  background: none;
+  color: var(--series-1);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 12.5px;
+  padding: 0;
+}
+
+/* ---- Supervisor device-management panel ---- */
+
+.allocation-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.allocation-status strong {
+  color: var(--text-primary);
+}
+
+.management-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.management-row select {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.management-divider {
+  height: 1px;
+  background: var(--gridline);
+  margin: 14px 0;
+}
+
 main {
   max-width: 1180px;
   margin: 0 auto;
@@ -391,6 +594,138 @@ main {
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-secondary);
+  margin-top: 10px;
+}
+
+/* ---- Long-term health risk indicator panel ---- */
+
+.risk-indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.risk-indicator-card {
+  background: var(--page-plane);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--gridline);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.risk-indicator-card[data-bucket="low"] {
+  border-left-color: var(--status-good);
+}
+.risk-indicator-card[data-bucket="moderate"] {
+  border-left-color: var(--status-warning);
+}
+.risk-indicator-card[data-bucket="high"] {
+  border-left-color: var(--status-critical);
+}
+
+.risk-indicator-card__title {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.risk-indicator-card__tier {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+.risk-indicator-card[data-bucket="low"] .risk-indicator-card__tier {
+  color: var(--status-good);
+  background: color-mix(in oklab, var(--status-good) 16%, var(--surface-1));
+}
+.risk-indicator-card[data-bucket="moderate"] .risk-indicator-card__tier {
+  color: color-mix(in oklab, var(--status-warning) 70%, var(--text-primary));
+  background: color-mix(in oklab, var(--status-warning) 22%, var(--surface-1));
+}
+.risk-indicator-card[data-bucket="high"] .risk-indicator-card__tier {
+  color: var(--status-critical);
+  background: color-mix(in oklab, var(--status-critical) 18%, var(--surface-1));
+}
+
+.risk-indicator-card__value {
+  font-size: 21px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.risk-indicator-card__value-unit {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 3px;
+}
+
+.risk-indicator-card__desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.why-matters {
+  margin-top: 18px;
+  border-top: 1px solid var(--gridline);
+  padding-top: 14px;
+}
+
+.why-matters summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--series-1);
+  list-style: none;
+}
+.why-matters summary::-webkit-details-marker {
+  display: none;
+}
+.why-matters summary::before {
+  content: "▸ ";
+}
+.why-matters[open] summary::before {
+  content: "▾ ";
+}
+
+.why-matters-body {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-top: 12px;
+  max-width: 760px;
+}
+
+.condition-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.condition-chip {
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--gridline);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.disclaimer-note {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-style: italic;
   margin-top: 10px;
 }
 

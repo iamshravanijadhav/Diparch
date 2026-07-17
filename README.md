@@ -6,22 +6,22 @@ HeatShield AI is an intelligent wearable safety system developed by **Team DIPAR
 
 ---
 
-## 📁 Repository Structure
+# 📁 Repository Structure
 
 ```
 DIP/
 │
 ├── firmware/
-│   ├── HeatShieldAI/              # Main ESP32 wearable firmware
-│   ├── HeatShieldAI_Dashboard/    # Backend Files
-│   ├── HeatShieldAI_Gateway/      # LoRa Gateway firmware
-│   └── HeatShieldAI_Mobile/       # Mobile application
+│   ├── HeatShieldAI/              # Main ESP32 Wearable Firmware
+│   ├── HeatShieldAI_Dashboard/    # Backend Server & Dashboard Files
+│   ├── HeatShieldAI_Gateway/      # LoRa Gateway Firmware
+│   └── HeatShieldAI_Mobile/       # Mobile Application
 │
 ├── HeatShieldAI/
-│   ├── dataset/                   # Training datasets
+│   ├── dataset/                   # Dataset used for model training
 │   ├── docs/                      # Documentation
-│   ├── training/                  # TinyML model training
-│   └── README.md                  # ML documentation
+│   ├── training/                  # TinyML Model Training
+│   └── README.md                  # ML Documentation
 │
 └── README.md
 ```
@@ -32,74 +32,77 @@ DIP/
 
 ## 📁 firmware/
 
-Contains all software required to run the complete HeatShield AI ecosystem.
+Contains all firmware and application source code.
 
-### HeatShieldAI
+---
 
-Main firmware running on the ESP32 wearable.
+### 📟 HeatShieldAI
 
-**Responsibilities**
+Firmware running on the ESP32 wearable.
 
-- Read sensor data
+#### Responsibilities
+
+- Read sensor values
 - Run TinyML inference
-- Display worker status
-- Trigger alerts
-- Send data to gateway
+- Display data on OLED
+- Trigger buzzer & vibration alerts
+- Send data to backend
 
 ---
 
-### HeatShieldAI_Dashboard
+### 🌐 HeatShieldAI_Dashboard
 
-Supervisor dashboard for monitoring workers.
+Contains the complete backend server and dashboard application.
 
-**Features**
+#### Responsibilities
 
-- Live worker monitoring
-- Risk level visualization
-- Worker status
-- Health analytics
+- Receive data from ESP32
+- Process incoming sensor data
+- Store and manage worker information
+- Display live dashboard
+- Real-time monitoring
+- WebSocket communication
 
 ---
 
-### HeatShieldAI_Gateway
+### 📡 HeatShieldAI_Gateway
 
-Gateway responsible for communication between wearable devices and the backend.
+Firmware for the LoRa Gateway.
 
-**Responsibilities**
+#### Responsibilities
 
 - Receive LoRa packets
-- Forward data
-- Synchronize workers
-- Maintain connectivity
+- Forward wearable data
+- Maintain gateway communication
 
 ---
 
-### HeatShieldAI_Mobile
+### 📱 HeatShieldAI_Mobile
 
-Mobile application for worker and supervisor access.
+Mobile application for workers and supervisors.
 
-**Features**
+#### Features
 
 - Live monitoring
-- Alerts
 - Notifications
 - Worker information
+- Health status
 
 ---
 
-## 📁 HeatShieldAI/
+# 🤖 HeatShieldAI/
 
-Contains all resources related to the TinyML model.
+Contains everything related to the TinyML model.
 
-### dataset/
+### 📂 dataset/
 
-Training and testing datasets collected from wearable sensors.
+Training and testing datasets.
 
 ---
 
-### training/
+### 📂 training/
 
-Scripts and notebooks used to train the TinyML model.
+Model training source code.
 
 Includes
 
@@ -111,54 +114,59 @@ Includes
 
 ---
 
-### docs/
+### 📂 docs/
 
-Project documentation including
+Documentation
 
-- Architecture
-- Sensor specifications
-- Model workflow
-- Deployment guides
+- System Architecture
+- Hardware Design
+- TinyML Workflow
+- Deployment Guide
 
 ---
 
-# 🚀 System Overview
+# 🚀 System Architecture
 
 ```
-Wearable (ESP32)
-        │
-        ▼
-TinyML Prediction
-        │
-        ▼
+Sensors
+   │
+   ▼
+ESP32 Wearable
+(TinyML Inference)
+   │
+   ▼
 LoRa Gateway
-        │
-        ▼
-Cloud / Backend
-        │
-        ▼
-Dashboard & Mobile App
+   │
+   ▼
+Backend Server
+(Node.js)
+   │
+   ▼
+Dashboard / Mobile App
 ```
 
 ---
 
 # 🛠 Technology Stack
 
-### Hardware
+## Hardware
 
-- ESP32
+- ESP32-32x
+- ESP32-S3-Wroom1
 - MAX30102
 - DHT22
 - OLED Display
+- LoRa Module
 - Buzzer
 - Vibration Motor
-- LoRa Module
 
-### Software
+## Software
 
 - PlatformIO
 - Arduino Framework
 - Node.js
+- Express.js
+- Socket.IO
 - Firebase
 - TinyML
 - TensorFlow Lite Micro
@@ -167,20 +175,172 @@ Dashboard & Mobile App
 
 # 🎯 Features
 
-- Real-time heat stress prediction
-- TinyML inference on-device
+- AI-powered heat stress prediction
+- TinyML running on ESP32
 - Offline Edge AI
 - OLED live display
-- Buzzer and vibration alerts
+- Buzzer & vibration alerts
+- Real-time dashboard
 - LoRa communication
-- Live dashboard
-- Mobile monitoring
-- Low-power wearable design
+- Mobile support
+- Low-power wearable
+
+---
+
+# ⚙️ Project Setup
+
+## 1️⃣ Clone Repository
+
+```bash
+git clone https://github.com/<your-username>/HeatShieldAI.git
+
+cd HeatShieldAI
+```
+
+---
+
+# 2️⃣ Install PlatformIO
+
+Install:
+
+- VS Code
+- PlatformIO Extension
+
+Open
+
+```
+firmware/HeatShieldAI
+```
+
+---
+
+# 3️⃣ Install Firmware Libraries
+
+PlatformIO automatically installs all required libraries.
+
+If using Arduino IDE, install:
+
+- Adafruit GFX
+- Adafruit SSD1306
+- DHT Sensor Library
+- SparkFun MAX3010x
+- ArduinoJson
+
+---
+
+# 4️⃣ Upload Firmware
+
+Connect ESP32.
+
+Run
+
+```bash
+pio run
+
+pio run --target upload
+```
+
+or
+
+```bash
+pio run -t upload
+```
+
+---
+
+# 5️⃣ Backend Setup
+
+Navigate to
+
+```bash
+cd firmware/HeatShieldAI_Dashboard
+```
+
+Install dependencies
+
+```bash
+npm install
+```
+
+Start backend
+
+```bash
+npm start
+```
+
+or
+
+```bash
+node server.js
+```
+
+Backend runs at
+
+```
+http://localhost:3000
+```
+
+---
+
+# 6️⃣ Mobile App
+
+Navigate to
+
+```bash
+cd firmware/HeatShieldAI_Mobile
+```
+
+Install dependencies
+
+```bash
+npm install
+```
+
+Start Expo
+
+```bash
+npx expo start
+```
+
+---
+
+# 7️⃣ Gateway Setup
+
+Navigate to
+
+```
+firmware/HeatShieldAI_Gateway
+```
+
+Open in PlatformIO and upload firmware to the gateway ESP32.
+
+---
+
+# 📡 Communication Flow
+
+```
+Sensors
+      │
+      ▼
+ESP32 Wearable
+      │
+      ▼
+LoRa Gateway
+      │
+      ▼
+Backend Server
+      │
+      ▼
+Dashboard
+      │
+      ▼
+Mobile App
+```
 
 ---
 
 
 
-## 📄 License
+# 📄 License
 
-This repository is intended for academic research and startup prototype development by Team DIPARCH.
+This repository is intended for academic research and startup prototype development by **Team DIPARCH**.

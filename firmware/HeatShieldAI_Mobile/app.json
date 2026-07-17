@@ -4,7 +4,7 @@
     "slug": "HeatShieldAI_Mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/icon-square.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -12,12 +12,26 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0b1f3a",
-        "foregroundImage": "./assets/logo.png"
+        "foregroundImage": "./assets/icon-square.png"
       },
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.iamtanmaybaranwal.HeatShieldAI_Mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCa_-4DmwDgZh5jSSmeWcUEmtYH78zaEPc"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/logo.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7632e3ae-e3b3-4c5a-aee9-74a0a0f6cbf3"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

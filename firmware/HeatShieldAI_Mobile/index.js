@@ -1,3 +1,9 @@
+// Must be the very first import: Firebase Auth needs crypto.getRandomValues()
+// for parts of the sign-in flow, which Expo Go polyfills for you invisibly
+// but a standalone build does not unless this runs before anything else
+// (including firebase) touches the auth SDK.
+import 'react-native-get-random-values';
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';

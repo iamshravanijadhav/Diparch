@@ -1,4 +1,4 @@
-# DIPARCH | HeatShield ⛏️
+# DIPARCH | HeatShield
 
 ### An AI-Powered Safety Band for Mine Workers
 
